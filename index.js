@@ -22,7 +22,7 @@ const playerHP = new Map();     // 初期HP: 5
 const playerCharge = new Map(); // チャージ数
 
 client.on('ready', () => {
-  console.log(`こっとんバトロワBotが起動したよ！: ${client.user.tag}`);
+  console.log('こっとんバトロワBotが起動したよ！');
 });
 
 client.on('messageCreate', async (message) => {
@@ -74,9 +74,9 @@ client.on('messageCreate', async (message) => {
             name: interaction.user.username
           });
 
-          const names = Array.from(participants.values()).map(p => `・${p.name}`).join('\n');
+          const names = Array.from(participants.values()).map(p => '・' + p.name).join('\n');
           await recruitMsg.edit({
-            content: `🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n${names}`
+            content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n' + names
           });
 
           await interaction.reply({ content: 'バトロワに参加登録したよ！', ephemeral: true });
@@ -127,9 +127,12 @@ client.on('messageCreate', async (message) => {
         )
       );
 
+      const redNames = teamRed.map(p => p.name).join(', ') || 'なし';
+      const whiteNames = teamWhite.map(p => p.name).join(', ') || 'なし';
+
       let teamInfoText = '⚔️ **【チーム決定＆行動選択！】** ⚔️\n\n';
-      teamInfoText += `🔴 **【チーム紅】**: ${teamRed.map(p => p.name).join(', ') || 'なし'}\n`;
-      teamInfoText += `⚪ **【チーム白】**: ${teamWhite.map(p => p.name).join(', ') || 'なし'}\n\n`;
+      teamInfoText += '🔴 **【チーム紅】**: ' + redNames + '\n';
+      teamInfoText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
       teamInfoText += '下のボタンから自分の【行動】を選んでね！（制限時間：30秒）';
 
       await recruitMsg.edit({
@@ -159,7 +162,7 @@ client.on('messageCreate', async (message) => {
 
         if (interaction.customId === 'special' && currentCharge < 2) {
           await interaction.reply({
-            content: `⚠️ チャージが足りません！（現在のチャージ: ${currentCharge}/2）\n他の技を選ぶか、まずは『⚡ チャージ』をしてね！`,
+            content: '⚠️ チャージが足りません！（現在のチャージ: ' + currentCharge + '/2）\n他の技を選ぶか、まずは『⚡ チャージ』をしてね！',
             ephemeral: true
           });
           return;
@@ -168,12 +171,12 @@ client.on('messageCreate', async (message) => {
         if (interaction.customId === 'attack' || interaction.customId === 'special') {
           if (enemyTeam.length === 0) {
             choices.set(uid, { name: interaction.user.username, choice: interaction.customId, targetId: null });
-            await interaction.reply({ content: `「${COMMANDS[interaction.customId].label}」を選択したよ！（攻撃相手がいません）`, ephemeral: true });
+            await interaction.reply({ content: '「' + COMMANDS[interaction.customId].label + '」を選択したよ！（攻撃相手がいません）', ephemeral: true });
             return;
           }
 
           const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId(`select_target_${interaction.customId}`)
+            .setCustomId('select_target_' + interaction.customId)
             .setPlaceholder('攻撃したい相手を選択してね！')
             .addOptions(
               enemyTeam.map(enemy => ({
@@ -185,7 +188,7 @@ client.on('messageCreate', async (message) => {
           const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
           const targetReply = await interaction.reply({
-            content: `「${COMMANDS[interaction.customId].label}」を選んだよ！攻撃する相手を選択してね：`,
+            content: '「' + COMMANDS[interaction.customId].label + '」を選んだよ！攻撃する相手を選択してね：',
             components: [selectRow],
             ephemeral: true,
             fetchReply: true
@@ -206,8 +209,9 @@ client.on('messageCreate', async (message) => {
               targetId: selectedTargetId
             });
 
+            const targetName = targetUser ? targetUser.name : '相手';
             await selectInteraction.reply({
-              content: `🎯 **${targetUser ? targetUser.name : '相手'}** をターゲットに「${COMMANDS[interaction.customId].label}」をセットしたよ！`,
+              content: '🎯 **' + targetName + '** をターゲットに「' + COMMANDS[interaction.customId].label + '」をセットしたよ！',
               ephemeral: true
             });
           } catch (e) {
@@ -225,7 +229,7 @@ client.on('messageCreate', async (message) => {
             targetId: null
           });
 
-          await interaction.reply({ content: `「${COMMANDS[interaction.customId].label}」を選択したよ！`, ephemeral: true });
+          await interaction.reply({ content: '「' + COMMANDS[interaction.customId].label + '」を選択したよ！', ephemeral: true });
         }
       });
 
@@ -236,8 +240,8 @@ client.on('messageCreate', async (message) => {
         }
 
         let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️\n\n';
-        resultText += `🔴 **【チーム紅】**: ${teamRed.map(p => p.name).join(', ') || 'なし'}\n`;
-        resultText += `⚪ **【チーム白】**: ${teamWhite.map(p => p.name).join(', ') || 'なし'}\n\n`;
+        resultText += '🔴 **【チーム紅】**: ' + redNames + '\n';
+        resultText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
         resultText += '───────────────────\n';
 
         const processPlayerAction = (player, myTeam, enemyTeam) => {
@@ -246,17 +250,17 @@ client.on('messageCreate', async (message) => {
           let log = '';
 
           const playerChoice = choices.get(player.userId);
-          const choice = playerChoice?.choice || 'guard';
-          const targetId = playerChoice?.targetId;
+          const choice = playerChoice ? playerChoice.choice : 'guard';
+          const targetId = playerChoice ? playerChoice.targetId : null;
 
           if (choice === 'charge') {
             charge += 1;
-            log = `・**${player.name}** は【⚡ チャージ】！ (チャージ: **${charge}**)\n`;
+            log = '・**' + player.name + '** は【⚡ チャージ】！ (チャージ: **' + charge + '**)\n';
           } else if (choice === 'heal') {
             hp = Math.min(5, hp + 1);
-            log = `・**${player.name}** は【🍓 回復】！ HPが1回復した！\n`;
+            log = '・**' + player.name + '** は【🍓 回復】！ HPが1回復した！\n';
           } else if (choice === 'guard') {
-            log = `・**${player.name}** は【🛡️ ガード】をかまえている！\n`;
+            log = '・**' + player.name + '** は【🛡️ ガード】をかまえている！\n';
           } else if (choice === 'attack') {
             let target = enemyTeam.find(e => e.userId === targetId);
             if (!target && enemyTeam.length > 0) {
@@ -264,11 +268,8 @@ client.on('messageCreate', async (message) => {
             }
 
             if (target) {
-              const targetChoice = choices.get(target.userId)?.choice;
+              const targetChoice = choices.get(target.userId) ? choices.get(target.userId).choice : null;
               if (targetChoice === 'guard') {
-                log = `・**${player.name}** の【⚔️ 通常攻撃】 ➔ **${target.name}** はガードした！(ダメージ0)\n`;
+                log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** はガードした！(ダメージ0)\n';
               } else {
-                let targetHp = playerHP.get(target.userId);
-                targetHp = Math.max(0, targetHp - 1);
-                playerHP.set(target.userId, targetHp);
-                log = `・**${player
+                let targetHp =
