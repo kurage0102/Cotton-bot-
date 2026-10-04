@@ -27,8 +27,8 @@ client.on('messageCreate', async (message) => {
     await message.reply(
       '🌸 **【こっとんチームバトロワの使い方】** 🌸\n' +
       '・`!battle` : バトル開始！\n\n' +
-      '🛡️ **カウンターシステム**: 相手の【💥 必殺技】を【🛡️ ガード】すると、防いだ上に相手に3ダメージのカウンター！\n' +
-      '⚡ **チャージ上限**: チャージは最大3個まで溜められるよ！'
+      '🛡️ **カウンター**: 【💥 必殺技】を【🛡️ ガード】すると相手に3ダメージ反撃！\n' +
+      '⚡ **チャージ**: 最大3個まで溜められるよ！'
     );
     return;
   }
@@ -40,7 +40,7 @@ client.on('messageCreate', async (message) => {
     );
 
     const recruitMsg = await message.channel.send({
-      content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n参加する人はボタンを押してね！\n\n**現在の参加者:** なし',
+      content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\nボタンを押して参加してね！\n\n**現在の参加者:** なし',
       components: [joinRow]
     });
 
@@ -55,11 +55,10 @@ client.on('messageCreate', async (message) => {
         if (!participants.has(interaction.user.id)) {
           participants.set(interaction.user.id, { userId: interaction.user.id, name: interaction.user.username });
           const names = Array.from(participants.values()).map(p => '・' + p.name).join('\n');
-          await recruitMsg.edit({
+          await interaction.update({
             content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n\n**現在の参加者:**\n' + names,
             components: [joinRow]
           });
-          await interaction.reply({ content: '参加登録したよ！', ephemeral: true });
         } else {
           await interaction.reply({ content: 'もう参加登録してるよ！', ephemeral: true });
         }
@@ -71,7 +70,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
         joinCollector.stop('started');
-        await interaction.reply({ content: 'バトルを開始します！', ephemeral: true });
+        await interaction.deferUpdate();
       }
     });
 
@@ -101,7 +100,6 @@ client.on('messageCreate', async (message) => {
       });
 
       let currentTurn = 1;
-
       const runTurn = async () => {
         const aliveRed = teamRed.filter(p => playerHP.get(p.userId) > 0);
         const aliveWhite = teamWhite.filter(p => playerHP.get(p.userId) > 0);
@@ -122,6 +120,7 @@ client.on('messageCreate', async (message) => {
           await recruitMsg.edit({ content: winnerText, components: [] });
           return;
         }
+
         let turnText = `⚔️ **【ターン ${currentTurn}：行動選択】** ⚔️\n\n`;
         turnText += '🔴 **【チーム紅】**: ' + teamRed.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n';
         turnText += '⚪ **【チーム白】**: ' + teamWhite.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n\n';
@@ -136,7 +135,6 @@ client.on('messageCreate', async (message) => {
         await recruitMsg.edit({ content: turnText, components: [actionRow] });
 
         const choices = new Map();
-
         const battleCollector = recruitMsg.createMessageComponentCollector({
           componentType: ComponentType.Button,
           time: 30000
@@ -211,8 +209,7 @@ client.on('messageCreate', async (message) => {
             battleCollector.stop('completed');
           }
         }
-
-        battleCollector.on('end', async (_, reason) => {
+        battleCollector.on('end', async () => {
           let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
 
           const pendingActions = [];
@@ -223,11 +220,11 @@ client.on('messageCreate', async (message) => {
             }
           });
 
-          // 1. チャージ・回復・ガードなどの自己行動処理（チャージ上限MAX 3を適用）
+          // 1. 自己行動（チャージ上限 MAX 3）
           pendingActions.forEach(act => {
             if (act.choice === 'charge') {
               const prev = playerCharge.get(act.userId);
-              const next = Math.min(3, prev + 1); // チャージはMAX 3
+              const next = Math.min(3, prev + 1);
               playerCharge.set(act.userId, next);
               if (prev >= 3) {
                 resultText += `・**${act.player.name}** は【⚡ チャージ】！ (すでにMAX: 3)\n`;
@@ -242,7 +239,7 @@ client.on('messageCreate', async (message) => {
             }
           });
 
-          // 2. 攻撃・必殺技の処理
+          // 2. 攻撃・必殺技・カウンター処理
           pendingActions.forEach(act => {
             const enemyTeamList = act.team === 'red' ? teamWhite : teamRed;
             let target = enemyTeamList.find(e => e.userId === act.targetId && playerHP.get(e.userId) > 0);
@@ -286,12 +283,10 @@ client.on('messageCreate', async (message) => {
             resultText += `・**${p.name}**: HP ${hp}/5 [${heart}] ⚡: ${charge}/3\n`;
           });
 
-          resultText += '\n⏳ *7秒後に次のターンへ進みます…*';
+          resultText += '\n⏳ *7秒後に次のターンへ自動進行します…*';
 
-          // 結果画面を表示（ボタンなし）
           await recruitMsg.edit({ content: resultText, components: [] });
 
-          // 結果を7秒間確認できるように待ってから次のターンを呼び出す
           currentTurn++;
           setTimeout(runTurn, 7000);
         });
