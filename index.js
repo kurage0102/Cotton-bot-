@@ -10,7 +10,7 @@ const client = new Client({
 
 // 技の定義 (5択)
 const COMMANDS = {
-  attack: { label: '⚔️️ 通常攻撃', style: ButtonStyle.Primary },
+  attack: { label: '⚔ 通常攻撃', style: ButtonStyle.Primary },
   guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
@@ -76,7 +76,7 @@ client.on('messageCreate', async (message) => {
 
           const names = Array.from(participants.values()).map(p => '・' + p.name).join('\n');
           await recruitMsg.edit({
-            content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n' + names
+            content: '🌸 **【こっとnチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n' + names
           });
 
           await interaction.reply({ content: 'バトロワに参加登録したよ！', ephemeral: true });
@@ -130,7 +130,7 @@ client.on('messageCreate', async (message) => {
       const redNames = teamRed.map(p => p.name).join(', ') || 'なし';
       const whiteNames = teamWhite.map(p => p.name).join(', ') || 'なし';
 
-      let teamInfoText = '⚔️ **【チーム決定＆行動選択！】** ⚔️\n\n';
+      let teamInfoText = '⚔️️ **【チーム決定＆行動選択！】** ⚔️\n\n';
       teamInfoText += '🔴 **【チーム紅】**: ' + redNames + '\n';
       teamInfoText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
       teamInfoText += '下のボタンから自分の【行動】を選んでね！（制限時間：30秒）';
@@ -145,7 +145,6 @@ client.on('messageCreate', async (message) => {
         componentType: ComponentType.Button,
         time: 30000
       });
-
       battleCollector.on('collect', async (interaction) => {
         if (!participants.has(interaction.user.id)) {
           await interaction.reply({ content: '今回は参加していないメンバーだよ！次の試合を待ってね！', ephemeral: true });
@@ -239,7 +238,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️\n\n';
+        let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️️\n\n';
         resultText += '🔴 **【チーム紅】**: ' + redNames + '\n';
         resultText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
         resultText += '───────────────────\n';
@@ -272,4 +271,54 @@ client.on('messageCreate', async (message) => {
               if (targetChoice === 'guard') {
                 log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** はガードした！(ダメージ0)\n';
               } else {
-                let targetHp 
+                let targetHp = playerHP.get(target.userId);
+                targetHp = Math.max(0, targetHp - 1);
+                playerHP.set(target.userId, targetHp);
+                log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** に **1ダメージ**！\n';
+              }
+            } else {
+              log = '・**' + player.name + '** は【⚔️ 通常攻撃】を出したが相手がいなかった！\n';
+            }
+          } else if (choice === 'special') {
+            charge = Math.max(0, charge - 2);
+            let target = enemyTeam.find(e => e.userId === targetId);
+            if (!target && enemyTeam.length > 0) {
+              target = enemyTeam[Math.floor(Math.random() * enemyTeam.length)];
+            }
+
+            if (target) {
+              let targetHp = playerHP.get(target.userId);
+              targetHp = Math.max(0, targetHp - 3);
+              playerHP.set(target.userId, targetHp);
+              log = '・**' + player.name + '** の【💥 必殺技】発動！！ ➔ **' + target.name + '** に **3ダメージ**の超大打撃！！\n';
+            } else {
+              log = '・**' + player.name + '** は【💥 必殺技】を放った！\n';
+            }
+          }
+
+          playerHP.set(player.userId, hp);
+          playerCharge.set(player.userId, charge);
+          return log;
+        };
+
+        resultText += '🔴 **＜チーム紅の行動＞**\n';
+        teamRed.forEach(p => { resultText += processPlayerAction(p, teamRed, teamWhite); });
+
+        resultText += '\n⚪ **＜チーム白の行動＞**\n';
+        teamWhite.forEach(p => { resultText += processPlayerAction(p, teamWhite, teamRed); });
+
+        resultText += '\n📊 **＜現在のステータス＞**\n';
+        participants.forEach((p, userId) => {
+          const hp = playerHP.get(userId);
+          const charge = playerCharge.get(userId);
+          const heart = hp > 0 ? '❤️'.repeat(hp) : '💀 ダウン！';
+          resultText += '・' + p.name + ': HP ' + hp + '/5 [' + heart + '] ⚡チャージ: ' + charge + '\n';
+        });
+
+        recruitMsg.edit({ content: resultText, components: [] });
+      });
+    });
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
