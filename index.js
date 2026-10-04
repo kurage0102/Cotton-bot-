@@ -27,7 +27,8 @@ client.on('messageCreate', async (message) => {
     await message.reply(
       '🌸 **【こっとんチームバトロワの使い方】** 🌸\n' +
       '・`!battle` : バトル開始！\n\n' +
-      '🛡️ **カウンターシステム**: 相手の【💥 必殺技】を【🛡️ ガード】すると、防いだ上に相手に3ダメージのカウンター！'
+      '🛡️ **カウンターシステム**: 相手の【💥 必殺技】を【🛡️ ガード】すると、防いだ上に相手に3ダメージのカウンター！\n' +
+      '⚡ **チャージ上限**: チャージは最大3個まで溜められるよ！'
     );
     return;
   }
@@ -92,7 +93,6 @@ client.on('messageCreate', async (message) => {
       teamRed.forEach(p => playerTeamMap.set(p.userId, 'red'));
       teamWhite.forEach(p => playerTeamMap.set(p.userId, 'white'));
 
-      // 試合開始時にHPとチャージを完全に初期化
       const playerHP = new Map();
       const playerCharge = new Map();
       participants.forEach((p) => {
@@ -102,9 +102,7 @@ client.on('messageCreate', async (message) => {
 
       let currentTurn = 1;
 
-      // ターンを回す関数
       const runTurn = async () => {
-        // 生存チェック
         const aliveRed = teamRed.filter(p => playerHP.get(p.userId) > 0);
         const aliveWhite = teamWhite.filter(p => playerHP.get(p.userId) > 0);
 
@@ -138,7 +136,6 @@ client.on('messageCreate', async (message) => {
         await recruitMsg.edit({ content: turnText, components: [actionRow] });
 
         const choices = new Map();
-        const activeAlivePlayers = Array.from(participants.keys()).filter(uid => playerHP.get(uid) > 0);
 
         const battleCollector = recruitMsg.createMessageComponentCollector({
           componentType: ComponentType.Button,
@@ -207,7 +204,6 @@ client.on('messageCreate', async (message) => {
           checkAllChosen();
         });
 
-        // 全員が選択し終わったかチェックして、終わっていれば即座にタイマーを止めて結果へ進む関数
         function checkAllChosen() {
           const aliveUidList = Array.from(participants.keys()).filter(uid => playerHP.get(uid) > 0);
           const allDone = aliveUidList.every(uid => choices.has(uid));
@@ -227,10 +223,17 @@ client.on('messageCreate', async (message) => {
             }
           });
 
+          // 1. チャージ・回復・ガードなどの自己行動処理（チャージ上限MAX 3を適用）
           pendingActions.forEach(act => {
             if (act.choice === 'charge') {
-              playerCharge.set(act.userId, playerCharge.get(act.userId) + 1);
-              resultText += `・**${act.player.name}** は【⚡ チャージ】！\n`;
+              const prev = playerCharge.get(act.userId);
+              const next = Math.min(3, prev + 1); // チャージはMAX 3
+              playerCharge.set(act.userId, next);
+              if (prev >= 3) {
+                resultText += `・**${act.player.name}** は【⚡ チャージ】！ (すでにMAX: 3)\n`;
+              } else {
+                resultText += `・**${act.player.name}** は【⚡ チャージ】！ (チャージ: ${next}/3)\n`;
+              }
             } else if (act.choice === 'heal') {
               playerHP.set(act.userId, Math.min(5, playerHP.get(act.userId) + 1));
               resultText += `・**${act.player.name}** は【🍓 回復】！ HP回復！\n`;
@@ -239,6 +242,7 @@ client.on('messageCreate', async (message) => {
             }
           });
 
+          // 2. 攻撃・必殺技の処理
           pendingActions.forEach(act => {
             const enemyTeamList = act.team === 'red' ? teamWhite : teamRed;
             let target = enemyTeamList.find(e => e.userId === act.targetId && playerHP.get(e.userId) > 0);
@@ -274,19 +278,22 @@ client.on('messageCreate', async (message) => {
             }
           });
 
-          resultText += '\n📊 **【ステータス】**\n';
+          resultText += '\n📊 **【現在のステータス】**\n';
           participants.forEach((p, uid) => {
             const hp = playerHP.get(uid);
             const charge = playerCharge.get(uid);
             const heart = hp > 0 ? '❤️'.repeat(hp) : '💀 ダウン！';
-            resultText += `・**${p.name}**: HP ${hp}/5 [${heart}] ⚡: ${charge}\n`;
+            resultText += `・**${p.name}**: HP ${hp}/5 [${heart}] ⚡: ${charge}/3\n`;
           });
 
+          resultText += '\n⏳ *7秒後に次のターンへ進みます…*';
+
+          // 結果画面を表示（ボタンなし）
           await recruitMsg.edit({ content: resultText, components: [] });
 
-          // 次のターンへ自動で進む（3秒後）
+          // 結果を7秒間確認できるように待ってから次のターンを呼び出す
           currentTurn++;
-          setTimeout(runTurn, 3000);
+          setTimeout(runTurn, 7000);
         });
       };
 
