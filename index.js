@@ -23,6 +23,12 @@ client.on('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
+  // !help または !ヘルプ の処理を追加
+  if (message.content === '!help' || message.content === '!ヘルプ') {
+    await message.reply('🌸 **【こっとんバトロワの使い方】** 🌸\n・`!battle` : バトルを開始してボタンで行動を選びます！');
+    return;
+  }
+
   if (message.content === '!battle') {
     const row = new ActionRowBuilder().addComponents(
       Object.keys(COMMANDS).map((id) =>
@@ -76,3 +82,4 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
