@@ -10,7 +10,7 @@ const client = new Client({
 
 // 技の定義 (5択)
 const COMMANDS = {
-  attack: { label: '⚔ 通常攻撃', style: ButtonStyle.Primary },
+  attack: { label: '⚔️ 通常攻撃', style: ButtonStyle.Primary },
   guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
@@ -76,7 +76,7 @@ client.on('messageCreate', async (message) => {
 
           const names = Array.from(participants.values()).map(p => '・' + p.name).join('\n');
           await recruitMsg.edit({
-            content: '🌸 **【こっとnチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n' + names
+            content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n参戦する人は「参加する！」を押してね！みんな集まったら「バトル開始！」を押してスタート！\n\n**現在の参加者:**\n' + names
           });
 
           await interaction.reply({ content: 'バトロワに参加登録したよ！', ephemeral: true });
@@ -130,7 +130,7 @@ client.on('messageCreate', async (message) => {
       const redNames = teamRed.map(p => p.name).join(', ') || 'なし';
       const whiteNames = teamWhite.map(p => p.name).join(', ') || 'なし';
 
-      let teamInfoText = '⚔️️ **【チーム決定＆行動選択！】** ⚔️\n\n';
+      let teamInfoText = '⚔️ **【チーム決定＆行動選択！】** ⚔️\n\n';
       teamInfoText += '🔴 **【チーム紅】**: ' + redNames + '\n';
       teamInfoText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
       teamInfoText += '下のボタンから自分の【行動】を選んでね！（制限時間：30秒）';
@@ -145,97 +145,178 @@ client.on('messageCreate', async (message) => {
         componentType: ComponentType.Button,
         time: 30000
       });
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ]
-});
-
-// プレイヤーのデータ保持
-const playerHP = new Map();
-const playerCharge = new Map();
-
-client.on('ready', () => {
-  console.log('Botが正常に起動しました！');
-});
-
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-
-  if (message.content === '!battle') {
-    // 参加・開始ボタンの作成
-    const btnJoin = new ButtonBuilder()
-      .setCustomId('join_battle')
-      .setLabel('✋ 参加する！')
-      .setStyle(ButtonStyle.Success);
-
-    const btnStart = new ButtonBuilder()
-      .setCustomId('start_battle')
-      .setLabel('⚔️ バトル開始！')
-      .setStyle(ButtonStyle.Danger);
-
-    const row = new ActionRowBuilder().addComponents(btnJoin, btnStart);
-
-    const recruitMsg = await message.channel.send({
-      content: '🌸 **【こっとんバトロワ 参加募集！】** 🌸\n「参加する！」を押してエントリーしてね！全員揃ったら「バトル開始！」を押してスタート！\n\n**【現在の参加者】**\nなし',
-      components: [row]
-    });
-
-    const participants = new Map();
-    const collector = recruitMsg.createMessageComponentCollector({ time: 120000 });
-
-    collector.on('collect', async (interaction) => {
-      if (interaction.customId === 'join_battle') {
+      battleCollector.on('collect', async (interaction) => {
         if (!participants.has(interaction.user.id)) {
-          participants.set(interaction.user.id, interaction.user.username);
-          
-          let pList = '';
-          participants.forEach((name) => { pList += '・' + name + '\n'; });
-
-          await recruitMsg.edit({
-            content: '🌸 **【こっとんバトロワ 参加募集！】** 🌸\n「参加する！」を押してエントリーしてね！全員揃ったら「バトル開始！」を押してスタート！\n\n**【現在の参加者】**\n' + pList,
-            components: [row]
-          });
-
-          await interaction.reply({ content: '参加登録したよ！', ephemeral: true });
-        } else {
-          await interaction.reply({ content: 'もう参加しているよ！', ephemeral: true });
-        }
-      }
-
-      if (interaction.customId === 'start_battle') {
-        if (participants.size === 0) {
-          await interaction.reply({ content: 'まだ誰も参加していません！', ephemeral: true });
+          await interaction.reply({ content: '今回は参加していないメンバーだよ！次の試合を待ってね！', ephemeral: true });
           return;
         }
 
-        collector.stop('started');
+        const uid = interaction.user.id;
+        if (!playerHP.has(uid)) playerHP.set(uid, 5);
+        if (!playerCharge.has(uid)) playerCharge.set(uid, 0);
 
-        // バトル開始時のコマンドボタン作成
-        const btnAttack = new ButtonBuilder().setCustomId('cmd_attack').setLabel('⚔️ 攻撃').setStyle(ButtonStyle.Primary);
-        const btnGuard = new ButtonBuilder().setCustomId('cmd_guard').setLabel('🛡️ ガード').setStyle(ButtonStyle.Success);
-        const btnCharge = new ButtonBuilder().setCustomId('cmd_charge').setLabel('⚡ チャージ').setStyle(ButtonStyle.Secondary);
-        const btnHeal = new ButtonBuilder().setCustomId('cmd_heal').setLabel('🍓 回復').setStyle(ButtonStyle.Success);
+        const currentCharge = playerCharge.get(uid);
+        const myTeam = playerTeamMap.get(uid);
+        const enemyTeam = myTeam === 'red' ? teamWhite : teamRed;
 
-        const battleRow = new ActionRowBuilder().addComponents(btnAttack, btnGuard, btnCharge, btnHeal);
+        if (interaction.customId === 'special' && currentCharge < 2) {
+          await interaction.reply({
+            content: '⚠️ チャージが足りません！（現在のチャージ: ' + currentCharge + '/2）\n他の技を選ぶか、まずは『⚡ チャージ』をしてね！',
+            ephemeral: true
+          });
+          return;
+        }
 
-        await recruitMsg.edit({
-          content: '⚔️ **【バトルスタート！】** ⚔️\n自分の行動を選んでね！（制限時間: 30秒）',
-          components: [battleRow]
+        if (interaction.customId === 'attack' || interaction.customId === 'special') {
+          if (enemyTeam.length === 0) {
+            choices.set(uid, { name: interaction.user.username, choice: interaction.customId, targetId: null });
+            await interaction.reply({ content: '「' + COMMANDS[interaction.customId].label + '」を選択したよ！（攻撃相手がいません）', ephemeral: true });
+            return;
+          }
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('select_target_' + interaction.customId)
+            .setPlaceholder('攻撃したい相手を選択してね！')
+            .addOptions(
+              enemyTeam.map(enemy => ({
+                label: enemy.name,
+                value: enemy.userId
+              }))
+            );
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+          const targetReply = await interaction.reply({
+            content: '「' + COMMANDS[interaction.customId].label + '」を選んだよ！攻撃する相手を選択してね：',
+            components: [selectRow],
+            ephemeral: true,
+            fetchReply: true
+          });
+
+          try {
+            const selectInteraction = await targetReply.awaitMessageComponent({
+              componentType: ComponentType.StringSelect,
+              time: 20000
+            });
+
+            const selectedTargetId = selectInteraction.values[0];
+            const targetUser = enemyTeam.find(e => e.userId === selectedTargetId);
+
+            choices.set(uid, {
+              name: interaction.user.username,
+              choice: interaction.customId,
+              targetId: selectedTargetId
+            });
+
+            const targetName = targetUser ? targetUser.name : '相手';
+            await selectInteraction.reply({
+              content: '🎯 **' + targetName + '** をターゲットに「' + COMMANDS[interaction.customId].label + '」をセットしたよ！',
+              ephemeral: true
+            });
+          } catch (e) {
+            const randomTarget = enemyTeam[Math.floor(Math.random() * enemyTeam.length)];
+            choices.set(uid, {
+              name: interaction.user.username,
+              choice: interaction.customId,
+              targetId: randomTarget.userId
+            });
+          }
+        } else {
+          choices.set(uid, {
+            name: interaction.user.username,
+            choice: interaction.customId,
+            targetId: null
+          });
+
+          await interaction.reply({ content: '「' + COMMANDS[interaction.customId].label + '」を選択したよ！', ephemeral: true });
+        }
+      });
+
+      battleCollector.on('end', () => {
+        if (choices.size === 0) {
+          recruitMsg.edit({ content: '誰も技を選ばなかったのでバトル中止になったよ！(；；)', components: [] });
+          return;
+        }
+
+        let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️\n\n';
+        resultText += '🔴 **【チーム紅】**: ' + redNames + '\n';
+        resultText += '⚪ **【チーム白】**: ' + whiteNames + '\n\n';
+        resultText += '───────────────────\n';
+
+        const processPlayerAction = (player, myTeam, enemyTeam) => {
+          let hp = playerHP.get(player.userId);
+          let charge = playerCharge.get(player.userId);
+          let log = '';
+
+          const playerChoice = choices.get(player.userId);
+          const choice = playerChoice ? playerChoice.choice : 'guard';
+          const targetId = playerChoice ? playerChoice.targetId : null;
+
+          if (choice === 'charge') {
+            charge += 1;
+            log = '・**' + player.name + '** は【⚡ チャージ】！ (チャージ: **' + charge + '**)\n';
+          } else if (choice === 'heal') {
+            hp = Math.min(5, hp + 1);
+            log = '・**' + player.name + '** は【🍓 回復】！ HPが1回復した！\n';
+          } else if (choice === 'guard') {
+            log = '・**' + player.name + '** は【🛡️ ガード】をかまえている！\n';
+          } else if (choice === 'attack') {
+            let target = enemyTeam.find(e => e.userId === targetId);
+            if (!target && enemyTeam.length > 0) {
+              target = enemyTeam[Math.floor(Math.random() * enemyTeam.length)];
+            }
+
+            if (target) {
+              const targetChoice = choices.get(target.userId) ? choices.get(target.userId).choice : null;
+              if (targetChoice === 'guard') {
+                log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** はガードした！(ダメージ0)\n';
+              } else {
+                let targetHp = playerHP.get(target.userId);
+                targetHp = Math.max(0, targetHp - 1);
+                playerHP.set(target.userId, targetHp);
+                log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** に **1ダメージ**！\n';
+              }
+            } else {
+              log = '・**' + player.name + '** は【⚔️ 通常攻撃】を出したが相手がいなかった！\n';
+            }
+          } else if (choice === 'special') {
+            charge = Math.max(0, charge - 2);
+            let target = enemyTeam.find(e => e.userId === targetId);
+            if (!target && enemyTeam.length > 0) {
+              target = enemyTeam[Math.floor(Math.random() * enemyTeam.length)];
+            }
+
+            if (target) {
+              let targetHp = playerHP.get(target.userId);
+              targetHp = Math.max(0, targetHp - 3);
+              playerHP.set(target.userId, targetHp);
+              log = '・**' + player.name + '** の【💥 必殺技】発動！！ ➔ **' + target.name + '** に **3ダメージ**の超大打撃！！\n';
+            } else {
+              log = '・**' + player.name + '** は【💥 必殺技】を放った！\n';
+            }
+          }
+
+          playerHP.set(player.userId, hp);
+          playerCharge.set(player.userId, charge);
+          return log;
+        };
+
+        resultText += '🔴 **＜チーム紅の行動＞**\n';
+        teamRed.forEach(p => { resultText += processPlayerAction(p, teamRed, teamWhite); });
+
+        resultText += '\n⚪ **＜チーム白の行動＞**\n';
+        teamWhite.forEach(p => { resultText += processPlayerAction(p, teamWhite, teamRed); });
+
+        resultText += '\n📊 **＜現在のステータス＞**\n';
+        participants.forEach((p, userId) => {
+          const hp = playerHP.get(userId);
+          const charge = playerCharge.get(userId);
+          const heart = hp > 0 ? '❤️'.repeat(hp) : '💀 ダウン！';
+          resultText += '・**' + p.name + '**: HP ' + hp + '/5 [' + heart + '] ⚡チャージ: ' + charge + '\n';
         });
 
-        await interaction.reply({ content: 'バトルを開始したよ！', ephemeral: true });
-      }
-    });
-
-    collector.on('end', (_, reason) => {
-      if (reason !== 'started') {
-        recruitMsg.edit({ content: '募集時間が終了しました！', components: [] });
-      }
+        recruitMsg.edit({ content: resultText, components: [] });
+      });
     });
   }
 });
