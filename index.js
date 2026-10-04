@@ -11,7 +11,7 @@ const client = new Client({
 // 技の定義 (5択)
 const COMMANDS = {
   attack: { label: '⚔️ 通常攻撃', style: ButtonStyle.Primary },
-  guard: { label: '🛡️️ ガード', style: ButtonStyle.Success },
+  guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
   heal: { label: '🍓 回復', style: ButtonStyle.Success },
@@ -44,7 +44,6 @@ client.on('messageCreate', async (message) => {
   }
 
   if (message.content === '!battle') {
-    // 1. 「参加」と「開始」の2つのボタンを用意
     const joinRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('join_battle')
@@ -61,10 +60,10 @@ client.on('messageCreate', async (message) => {
       components: [joinRow]
     });
 
-    const participants = new Map(); // 参加者リスト
+    const participants = new Map();
     const joinCollector = recruitMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 120000 // 2分間放置されたら自動キャンセル
+      time: 120000
     });
 
     joinCollector.on('collect', async (interaction) => {
@@ -106,7 +105,6 @@ client.on('messageCreate', async (message) => {
         return;
       }
 
-      // 2. 参加者をランダムにシャッフルしてチーム分け
       const shuffled = Array.from(participants.values()).sort(() => Math.random() - 0.5);
       const teamRed = [];
       const teamWhite = [];
@@ -116,12 +114,10 @@ client.on('messageCreate', async (message) => {
         else teamWhite.push(p);
       });
 
-      // チーム情報を保存
       const playerTeamMap = new Map();
       teamRed.forEach(p => playerTeamMap.set(p.userId, 'red'));
       teamWhite.forEach(p => playerTeamMap.set(p.userId, 'white'));
 
-      // 技選択用のボタン
       const actionRow = new ActionRowBuilder().addComponents(
         Object.keys(COMMANDS).map((id) =>
           new ButtonBuilder()
@@ -141,7 +137,7 @@ client.on('messageCreate', async (message) => {
         components: [actionRow]
       });
 
-      const choices = new Map(); // userId -> { name, choice, targetId }
+      const choices = new Map();
       const battleCollector = recruitMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 30000
@@ -169,7 +165,6 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        // 攻撃系の技（attack, special）ならターゲット選択メニューを出す
         if (interaction.customId === 'attack' || interaction.customId === 'special') {
           if (enemyTeam.length === 0) {
             choices.set(uid, { name: interaction.user.username, choice: interaction.customId, targetId: null });
@@ -196,7 +191,6 @@ client.on('messageCreate', async (message) => {
             fetchReply: true
           });
 
-          // プルダウンの選択待ち
           try {
             const selectInteraction = await targetReply.awaitMessageComponent({
               componentType: ComponentType.StringSelect,
@@ -217,7 +211,6 @@ client.on('messageCreate', async (message) => {
               ephemeral: true
             });
           } catch (e) {
-            // 時間切れの場合はランダムターゲット
             const randomTarget = enemyTeam[Math.floor(Math.random() * enemyTeam.length)];
             choices.set(uid, {
               name: interaction.user.username,
@@ -226,7 +219,6 @@ client.on('messageCreate', async (message) => {
             });
           }
         } else {
-          // ガード、チャージ、回復の場合
           choices.set(uid, {
             name: interaction.user.username,
             choice: interaction.customId,
@@ -237,14 +229,13 @@ client.on('messageCreate', async (message) => {
         }
       });
 
-      // 3. 結果発表
       battleCollector.on('end', () => {
         if (choices.size === 0) {
           recruitMsg.edit({ content: '誰も技を選ばなかったのでバトル中止になったよ！(；；)', components: [] });
           return;
         }
 
-        let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️️\n\n';
+        let resultText = '⚔️ **【チーム対抗戦 結果発表！】** ⚔️\n\n';
         resultText += `🔴 **【チーム紅】**: ${teamRed.map(p => p.name).join(', ') || 'なし'}\n`;
         resultText += `⚪ **【チーム白】**: ${teamWhite.map(p => p.name).join(', ') || 'なし'}\n\n`;
         resultText += '───────────────────\n';
@@ -274,6 +265,10 @@ client.on('messageCreate', async (message) => {
 
             if (target) {
               const targetChoice = choices.get(target.userId)?.choice;
-              if (targetChoice === 'guard'
-
-        
+              if (targetChoice === 'guard') {
+                log = `・**${player.name}** の【⚔️ 通常攻撃】 ➔ **${target.name}** はガードした！(ダメージ0)\n`;
+              } else {
+                let targetHp = playerHP.get(target.userId);
+                targetHp = Math.max(0, targetHp - 1);
+                playerHP.set(target.userId, targetHp);
+                log = `・**${player
