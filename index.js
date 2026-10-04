@@ -10,7 +10,7 @@ const client = new Client({
 
 // 技の定義 (5択)
 const COMMANDS = {
-  attack: { label: '⚔️ 通常攻撃', style: ButtonStyle.Primary },
+  attack: { label: '⚔️️ 通常攻撃', style: ButtonStyle.Primary },
   guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
@@ -272,4 +272,4 @@ client.on('messageCreate', async (message) => {
               if (targetChoice === 'guard') {
                 log = '・**' + player.name + '** の【⚔️ 通常攻撃】 ➔ **' + target.name + '** はガードした！(ダメージ0)\n';
               } else {
-                let targetHp =
+                let targetHp 
