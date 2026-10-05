@@ -27,9 +27,9 @@ client.on('messageCreate', async (message) => {
     await message.reply(
       '🌸 **【こっとんチームバトロワの使い方・コマンド一覧】** 🌸\n\n' +
       '⚔️ **通常攻撃** : 指定した相手1人に1ダメージ！\n' +
-      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐと相手にカウンター！\n' +
+      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐと相手に3反撃カウンター！\n' +
       '⚡ **チャージ** : 必殺技に必要なエネルギーを1溜める（最大3個まで）\n' +
-      '💥 **必殺技** : 2チャージ消費して相手に3大ダメージ！（ガードされるとカウンターされるよ）\n' +
+      '💥 **必殺技** : 2チャージ消費して相手に3大ダメージ！（ガードされると逆カウンター受けるよ）\n' +
       '🍓 **回復** : 自分のHPを1回復！（最大HP 5）\n\n' +
       '👉 `!battle` で対戦募集スタート！'
     );
@@ -72,8 +72,8 @@ client.on('messageCreate', async (message) => {
           await interaction.reply({ content: 'まだ誰も参加していないよ！', ephemeral: true });
           return;
         }
+        await interaction.reply({ content: '⚔️ バトルを開始します！', ephemeral: true });
         joinCollector.stop('started');
-        await interaction.deferUpdate();
       }
     });
 
@@ -160,7 +160,7 @@ client.on('messageCreate', async (message) => {
           const enemyTeam = (myTeam === 'red' ? teamWhite : teamRed).filter(p => playerHP.get(p.userId) > 0);
 
           if (interaction.customId === 'special' && currentCharge < 2) {
-            await interaction.reply({ content: `⚠️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
+            await interaction.reply({ content: `⚠️️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
             return;
           }
 
