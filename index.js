@@ -1,3 +1,9 @@
+// 二重起動を防止するコード
+if (globalThis.__botStarted) {
+  process.exit(0);
+}
+globalThis.__botStarted = true;
+
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder } = require('discord.js');
 
 const client = new Client({
