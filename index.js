@@ -333,9 +333,13 @@ client.on('messageCreate', async (message) => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// Renderのエラー（No open ports detected）を回避するためのWebサーバー
+// Renderのエラー（ポート10000指定＆即時応答）を完全回避するWebサーバー
 const http = require('http');
+const PORT = process.env.PORT || 10000;
+
 http.createServer((req, res) => {
-  res.write('Bot is running!');
-  res.end();
-}).listen(process.env.PORT || 3000);
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is running!');
+}).listen(PORT, '0.0.0.0', () => {
+  console.log(`Web server listening on port ${PORT}`);
+});
