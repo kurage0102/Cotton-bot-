@@ -1,15 +1,8 @@
-// 二重起動を防止するコード
+// 二重起動防止
 if (globalThis.__botStarted) {
   process.exit(0);
 }
 globalThis.__botStarted = true;
-
-// --- 常時起動用のミニWebサーバー ---
-const express = require('express');
-const app = express();
-app.get('/', (req, res) => res.send('Bot is active!'));
-app.listen(3000, () => console.log('Webサーバー準備OK!'));
-// ---------------------------------
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder } = require('discord.js');
 
@@ -27,35 +20,37 @@ const COMMANDS = {
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
   heal: { label: '🍓 回復', style: ButtonStyle.Success },
+  gamble: { label: '🎰 一か八か', style: ButtonStyle.Danger },
 };
 
 client.on('ready', () => {
-  console.log('こっとんバトロワBotが起動したよ！');
+  console.log('こっとんバトルBotが起動したよ！');
 });
 
-// 送信中のメッセージIDを完全にロックするセット
 const sentMessages = new Set();
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
+  // ヘルプコマンド
   if (message.content === '!help' || message.content === '!ヘルプ') {
-    // 完全に一度処理したメッセージIDなら絶対に弾く
     if (sentMessages.has(message.id)) return;
     sentMessages.add(message.id);
 
     await message.reply(
-      '🌸 **【こっとんチームバトロワの使い方・コマンド一覧】** 🌸\n\n' +
+      '🌸 **【こっとんチームバトルの使い方・コマンド一覧】** 🌸\n\n' +
       '⚔️ **通常攻撃** : 指定した相手1人に1ダメージ！\n' +
-      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐと相手にカウンター！\n' +
+      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐとカウンター！\n' +
       '⚡ **チャージ** : 必殺技に必要なエネルギーを1溜める（最大3個まで）\n' +
       '💥 **必殺技** : 2チャージ消費して相手に3大ダメージ！（ガードされるとカウンターされるよ）\n' +
-      '🍓 **回復** : 自分のHPを1回復！（最大HP 5）\n\n' +
+      '🍓 **回復** : 自分のHPを1回復！（最大HP 5）\n' +
+      '🎰 **一か八か** : 50%でHP3回復！ 50%で自分に3ダメージ！\n\n' +
       '👉 `!battle` で対戦募集スタート！'
     );
     return;
   }
 
+  // バトル募集コマンド
   if (message.content === '!battle') {
     const joinRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('join_battle').setLabel('✋ 参加する！').setStyle(ButtonStyle.Success),
@@ -63,7 +58,7 @@ client.on('messageCreate', async (message) => {
     );
 
     const recruitMsg = await message.channel.send({
-      content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\nボタンを押して参加してね！\n\n**現在の参加者:** なし',
+      content: '🌸 **【こっとんチームバトル 参加者募集中！】** 🌸\nボタンを押して参加してね！\n\n**現在の参加者:** なし',
       components: [joinRow]
     });
 
@@ -79,7 +74,7 @@ client.on('messageCreate', async (message) => {
           participants.set(interaction.user.id, { userId: interaction.user.id, name: interaction.user.username });
           const names = Array.from(participants.values()).map(p => '・' + p.name).join('\n');
           await interaction.update({
-            content: '🌸 **【こっとんチームバトロワ 参加者募集中！】** 🌸\n\n**現在の参加者:**\n' + names,
+            content: '🌸 **【こっとんチームバトル 参加者募集中！】** 🌸\n\n**現在の参加者:**\n' + names,
             components: [joinRow]
           });
         } else {
@@ -95,9 +90,7 @@ client.on('messageCreate', async (message) => {
         await interaction.reply({ content: '⚔️ バトルを開始します！', ephemeral: true });
         joinCollector.stop('started');
       }
-    });
-
-    joinCollector.on('end', async (_, reason) => {
+    });joinCollector.on('end', async (_, reason) => {
       if (reason !== 'started' || participants.size === 0) {
         await recruitMsg.edit({ content: '募集が終了しました…(；；)', components: [] });
         return;
@@ -144,18 +137,23 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        let turnText = `⚔️ **【ターン ${currentTurn}：行動選択】** ⚔️\n\n`;
+        let turnText = `⚔️️ **【ターン ${currentTurn}：行動選択】** ⚔️\n\n`;
         turnText += '🔴 **【チーム紅】**: ' + teamRed.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n';
         turnText += '⚪ **【チーム白】**: ' + teamWhite.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n\n';
         turnText += '下のボタンから自分の【行動】を選んでね！';
 
-        const actionRow = new ActionRowBuilder().addComponents(
-          Object.keys(COMMANDS).map((id) =>
+        const actionRow1 = new ActionRowBuilder().addComponents(
+          ['attack', 'guard', 'charge'].map(id => 
+            new ButtonBuilder().setCustomId(id).setLabel(COMMANDS[id].label).setStyle(COMMANDS[id].style)
+          )
+        );
+        const actionRow2 = new ActionRowBuilder().addComponents(
+          ['special', 'heal', 'gamble'].map(id => 
             new ButtonBuilder().setCustomId(id).setLabel(COMMANDS[id].label).setStyle(COMMANDS[id].style)
           )
         );
 
-        await recruitMsg.edit({ content: turnText, components: [actionRow] });
+        await recruitMsg.edit({ content: turnText, components: [actionRow1, actionRow2] });
 
         const choices = new Map();
         const battleCollector = recruitMsg.createMessageComponentCollector({
@@ -232,7 +230,6 @@ client.on('messageCreate', async (message) => {
             battleCollector.stop('completed');
           }
         }
-
         battleCollector.on('end', async () => {
           let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
 
@@ -244,7 +241,6 @@ client.on('messageCreate', async (message) => {
             }
           });
 
-          // 1. 自己行動（チャージ上限 MAX 3）
           pendingActions.forEach(act => {
             if (act.choice === 'charge') {
               const prev = playerCharge.get(act.userId);
@@ -257,13 +253,24 @@ client.on('messageCreate', async (message) => {
               }
             } else if (act.choice === 'heal') {
               playerHP.set(act.userId, Math.min(5, playerHP.get(act.userId) + 1));
-              resultText += `・**${act.player.name}** は【🍓 回復】！ HP回復！\n`;
+              resultText += `・**${act.player.name}** は【🍓 回復】！ HPが1回復！\n`;
+            } else if (act.choice === 'gamble') {
+              const isSuccess = Math.random() < 0.5;
+              const currentHp = playerHP.get(act.userId);
+              if (isSuccess) {
+                const newHp = Math.min(5, currentHp + 3);
+                playerHP.set(act.userId, newHp);
+                resultText += `・**${act.player.name}** の【🎰 一か八か】 ➔ 🌟 **大成功！！** HPが **3回復** した！！\n`;
+              } else {
+                const newHp = Math.max(0, currentHp - 3);
+                playerHP.set(act.userId, newHp);
+                resultText += `・**${act.player.name}** の【🎰 一か八か】 ➔ 💀 **大失敗！！** 逆に **3ダメージ** を受けてしまった…！！\n`;
+              }
             } else if (act.choice === 'guard') {
               resultText += `・**${act.player.name}** は【🛡️ ガード】をかまえている！\n`;
             }
           });
 
-          // 2. 攻撃・必殺技・カウンター処理
           pendingActions.forEach(act => {
             const enemyTeamList = act.team === 'red' ? teamWhite : teamRed;
             let target = enemyTeamList.find(e => e.userId === act.targetId && playerHP.get(e.userId) > 0);
@@ -320,9 +327,5 @@ client.on('messageCreate', async (message) => {
     });
   }
 });
-
-if (client.user) {
-  return;
-}
 
 client.login(process.env.DISCORD_TOKEN);
