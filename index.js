@@ -9,7 +9,7 @@ const client = new Client({
 });
 
 const COMMANDS = {
-  attack: { label: '⚔️ 通常攻撃', style: ButtonStyle.Primary },
+  attack: { label: '⚔️️ 通常攻撃', style: ButtonStyle.Primary },
   guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
@@ -160,7 +160,7 @@ client.on('messageCreate', async (message) => {
           const enemyTeam = (myTeam === 'red' ? teamWhite : teamRed).filter(p => playerHP.get(p.userId) > 0);
 
           if (interaction.customId === 'special' && currentCharge < 2) {
-            await interaction.reply({ content: `⚠️️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
+            await interaction.reply({ content: `⚠️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
             return;
           }
 
@@ -212,6 +212,7 @@ client.on('messageCreate', async (message) => {
             battleCollector.stop('completed');
           }
         }
+
         battleCollector.on('end', async () => {
           let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
 
