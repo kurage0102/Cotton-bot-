@@ -4,6 +4,13 @@ if (globalThis.__botStarted) {
 }
 globalThis.__botStarted = true;
 
+// --- 常時起動用のミニWebサーバー ---
+const express = require('express');
+const app = express();
+app.get('/', (req, res) => res.send('Bot is active!'));
+app.listen(3000, () => console.log('Webサーバー準備OK!'));
+// ---------------------------------
+
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder } = require('discord.js');
 
 const client = new Client({
