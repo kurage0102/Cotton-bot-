@@ -20,22 +20,23 @@ client.on('ready', () => {
   console.log('こっとんバトロワBotが起動したよ！');
 });
 
-// 二重返信を防ぐための処理フラグ
-const processingHelp = new Set();
+// 送信中のメッセージIDを完全にロックするセット
+const sentMessages = new Set();
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   if (message.content === '!help' || message.content === '!ヘルプ') {
-    if (processingHelp.has(message.id)) return;
-    processingHelp.add(message.id);
+    // 完全に一度処理したメッセージIDなら絶対に弾く
+    if (sentMessages.has(message.id)) return;
+    sentMessages.add(message.id);
 
     await message.reply(
       '🌸 **【こっとんチームバトロワの使い方・コマンド一覧】** 🌸\n\n' +
       '⚔️ **通常攻撃** : 指定した相手1人に1ダメージ！\n' +
-      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐと相手にカウンター！\n' +
+      '🛡️ **ガード** : 通常攻撃を無効化！必殺技を防ぐと相手に3反撃カウンター！\n' +
       '⚡ **チャージ** : 必殺技に必要なエネルギーを1溜める（最大3個まで）\n' +
-      '💥 **必殺技** : 2チャージ消費して相手に3大ダメージ！（ガードされるとカウンターされるよ）\n' +
+      '💥 **必殺技** : 2チャージ消費して相手に3大ダメージ！（ガードされると逆カウンター受けるよ）\n' +
       '🍓 **回復** : 自分のHPを1回復！（最大HP 5）\n\n' +
       '👉 `!battle` で対戦募集スタート！'
     );
@@ -220,7 +221,7 @@ client.on('messageCreate', async (message) => {
         }
 
         battleCollector.on('end', async () => {
-          let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️️\n\n`;
+          let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
 
           const pendingActions = [];
           participants.forEach((p, uid) => {
