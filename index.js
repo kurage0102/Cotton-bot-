@@ -308,4 +308,8 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+if (client.user) {
+  return;
+}
+
 client.login(process.env.DISCORD_TOKEN);
