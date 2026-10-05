@@ -332,3 +332,10 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+// Renderのエラー（No open ports detected）を回避するためのWebサーバー
+const http = require('http');
+http.createServer((req, res) => {
+  res.write('Bot is running!');
+  res.end();
+}).listen(process.env.PORT || 3000);
