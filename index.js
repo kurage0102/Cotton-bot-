@@ -9,7 +9,7 @@ const client = new Client({
 });
 
 const COMMANDS = {
-  attack: { label: '⚔️️ 通常攻撃', style: ButtonStyle.Primary },
+  attack: { label: '⚔️ 通常攻撃', style: ButtonStyle.Primary },
   guard: { label: '🛡️ ガード', style: ButtonStyle.Success },
   charge: { label: '⚡ チャージ', style: ButtonStyle.Secondary },
   special: { label: '💥 必殺技(要2チャージ)', style: ButtonStyle.Danger },
@@ -20,10 +20,16 @@ client.on('ready', () => {
   console.log('こっとんバトロワBotが起動したよ！');
 });
 
+// 二重返信を防ぐための処理フラグ
+const processingHelp = new Set();
+
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   if (message.content === '!help' || message.content === '!ヘルプ') {
+    if (processingHelp.has(message.id)) return;
+    processingHelp.add(message.id);
+
     await message.reply(
       '🌸 **【こっとんチームバトロワの使い方・コマンド一覧】** 🌸\n\n' +
       '⚔️ **通常攻撃** : 指定した相手1人に1ダメージ！\n' +
@@ -214,7 +220,7 @@ client.on('messageCreate', async (message) => {
         }
 
         battleCollector.on('end', async () => {
-          let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
+          let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️️\n\n`;
 
           const pendingActions = [];
           participants.forEach((p, uid) => {
