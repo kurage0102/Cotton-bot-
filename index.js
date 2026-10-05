@@ -50,7 +50,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // バトル募集コマンド
+            // バトル募集コマンド
   if (message.content === '!battle') {
     const joinRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('join_battle').setLabel('✋ 参加する！').setStyle(ButtonStyle.Success),
@@ -90,7 +90,9 @@ client.on('messageCreate', async (message) => {
         await interaction.reply({ content: '⚔️ バトルを開始します！', ephemeral: true });
         joinCollector.stop('started');
       }
-    });joinCollector.on('end', async (_, reason) => {
+    });
+
+      joinCollector.on('end', async (_, reason) => {
       if (reason !== 'started' || participants.size === 0) {
         await recruitMsg.edit({ content: '募集が終了しました…(；；)', components: [] });
         return;
@@ -137,7 +139,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        let turnText = `⚔️️ **【ターン ${currentTurn}：行動選択】** ⚔️\n\n`;
+        let turnText = `⚔️ **【ターン ${currentTurn}：行動選択】** ⚔️\n\n`;
         turnText += '🔴 **【チーム紅】**: ' + teamRed.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n';
         turnText += '⚪ **【チーム白】**: ' + teamWhite.map(p => `${p.name}(HP:${playerHP.get(p.userId)})`).join(', ') + '\n\n';
         turnText += '下のボタンから自分の【行動】を選んでね！';
@@ -178,7 +180,7 @@ client.on('messageCreate', async (message) => {
           const enemyTeam = (myTeam === 'red' ? teamWhite : teamRed).filter(p => playerHP.get(p.userId) > 0);
 
           if (interaction.customId === 'special' && currentCharge < 2) {
-            await interaction.reply({ content: `⚠️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
+            await interaction.reply({ content: `⚠️️ チャージが足りません！（現在: ${currentCharge}/2）`, ephemeral: true });
             return;
           }
 
@@ -230,7 +232,8 @@ client.on('messageCreate', async (message) => {
             battleCollector.stop('completed');
           }
         }
-        battleCollector.on('end', async () => {
+
+                battleCollector.on('end', async () => {
           let resultText = `⚔️ **【ターン ${currentTurn} 結果発表】** ⚔️\n\n`;
 
           const pendingActions = [];
